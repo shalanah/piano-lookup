@@ -9,10 +9,9 @@ import { Button } from "primereact/button";
 import { Message } from "primereact/message";
 
 const Main = styled.main`
-  padding: 2rem;
+  padding: 2rem 1.5rem;
   max-width: 320px;
   margin: 0 auto;
-  margin-top: 30vh;
   display: flex;
   gap: 20px;
   outline: 1px solid red;
@@ -43,9 +42,10 @@ const Table = styled.table`
 
 function App() {
   const [brand, setBrand] = useState<string>("");
-  const [serial, setSerial] = useState<string | null>(null);
-
+  const [serial, setSerial] = useState<string>("");
   const [csvData, setCsvData] = useState(null);
+  const [showMatches, setShowMatches] = useState(false);
+  const [results, setResults] = useState<any[]>([]); // so you can see your last values might be helpful
 
   useEffect(() => {
     const fetchCsv = async () => {
@@ -87,6 +87,7 @@ function App() {
 
   let answer = "";
   let isLastItem = false;
+  let foundYear = false;
   if (brand && brands.includes(brand) && serial) {
     const data = csvData[brand];
     const index = data.findIndex((d: any) => {
@@ -96,13 +97,19 @@ function App() {
     if (index > 0) {
       data[index - 1]?.year;
       const year = data[index - 1]?.year;
-
+      foundYear = true;
       answer = Number(year);
     } else if (data[data.length - 1].license <= serial) {
       answer = Number(data[data.length - 1].year);
       isLastItem = true;
+      foundYear = true;
     }
   }
+
+  let messageText = "";
+  if (answer && showMatches) messageText = `Year: ${answer}`;
+  else if (!showMatches) messageText = "Enter brand and serial number";
+  else messageText = "No matches found";
 
   return (
     <PrimeReactProvider>
@@ -113,7 +120,10 @@ function App() {
             placeholder="Piano brand"
             value={brand}
             dropdown
-            onChange={(e) => setBrand(e.value)}
+            onChange={(e) => {
+              setBrand(e.value);
+              setShowMatches(false);
+            }}
             completeMethod={(e) => {
               const filtered = brands.filter((b) =>
                 b.toLowerCase().includes(e.query.toLowerCase())
@@ -128,25 +138,32 @@ function App() {
               placeholder="Serial number"
               type={"text"}
               onChange={(e) => {
-                setSerial(e.target.value);
+                setShowMatches(false);
               }}
               onBlur={(e) => {
-                setSerial(e.target.value);
+                setSerial(e.target.value.trim());
+                setShowMatches(true);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && ref.current) {
-                  setSerial(ref.current.value);
+                  setSerial(ref.current.value.trim());
+                  setShowMatches(true);
                 }
               }}
             />
-            <Button icon="pi pi-search" className="p-button" />
+            <Button
+              icon="pi pi-search"
+              className="p-button"
+              onClick={() => setShowMatches(true)}
+              disabled={showMatches}
+            />
           </div>
           {/* <Button label="Search" /> */}
           <div className="card flex justify-content-center">
             <Message
               severity="secondary"
-              text={answer ? `Year: ${answer}` : "No matches found"}
               className="w-full"
+              text={messageText}
             />
           </div>
           {/* <select

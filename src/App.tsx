@@ -13,6 +13,7 @@ import { Button } from "primereact/button";
 import { X } from "react-feather";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import "primeicons/primeicons.css";
 
 const Main = styled.main`
   padding: 0 1.5rem 2rem;
@@ -71,7 +72,7 @@ function App() {
   useEffect(() => {
     const fetchCsv = async () => {
       try {
-        const res = await fetch(`/assets/sheet_6_15_2024.csv`);
+        const res = await fetch(`./assets/sheet_6_15_2024.csv`);
         if (!res.ok || !res.body) throw new Error("Failed to fetch CSV");
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
@@ -144,8 +145,57 @@ function App() {
 
   const autoRef = useRef<AutoComplete>(null);
 
-  if (!csvData) return <div>Loading...</div>;
-  if (error) return <div>{error}</div>;
+  if (!csvData)
+    return (
+      <Main>
+        <div
+          className="flex-col flex gap-[20px] pt-8"
+          style={{ background: "#fff" }}
+        >
+          <img
+            src="assets/logo.png"
+            alt="logo"
+            style={{ width: "75%", margin: "0 auto" }}
+          />
+
+          <div className="text-center mt-10 ">
+            <i
+              className="pi pi-spin  pi-spinner w-[2rem] inline-flex margin-auto"
+              style={{ fontSize: "2rem" }}
+            />
+            <div className="mt-4">Loading...</div>
+          </div>
+        </div>
+      </Main>
+    );
+  if (error)
+    return (
+      <Main>
+        <div
+          className="flex-col flex gap-[20px] pt-8"
+          style={{ background: "#fff" }}
+        >
+          <img
+            src="assets/logo.png"
+            alt="logo"
+            style={{ width: "75%", margin: "0 auto" }}
+          />
+        </div>
+        <div className="text-center mt-10 ">
+          <i
+            className="pi-exclamation-circle pi"
+            style={{ fontSize: "2rem" }}
+          />
+          <div className="mt-2">
+            Ooops!
+            <br />
+            Something went wrong.
+            <br />
+            Try reloading.
+          </div>
+        </div>
+      </Main>
+    );
 
   const itemTemplate = (item: string) => {
     const active = brand === item;
@@ -189,7 +239,7 @@ function App() {
           style={{ background: "#fff" }}
         >
           <img
-            src="/assets/logo.png"
+            src="assets/logo.png"
             alt="logo"
             style={{ width: "75%", margin: "0 auto" }}
           />

@@ -1,3 +1,7 @@
+// TODO: Clean up!
+// - More hooks + comps
+// - Check with staff to get answers to data questions and maybe combine some data
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import Papa from "papaparse";
@@ -6,19 +10,14 @@ import "primereact/resources/themes/lara-light-cyan/theme.css";
 import { AutoComplete } from "primereact/autocomplete";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
-import { Message } from "primereact/message";
 import { X } from "react-feather";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { classNames } from "primereact/utils";
 
 const Main = styled.main`
-  padding: 2rem 1.5rem;
+  padding: 0 1.5rem 2rem;
   max-width: 320px;
   margin: 0 auto;
-  display: flex;
-  gap: 20px;
-  outline: 1px solid red;
 `;
 
 const IconButton = styled.button`
@@ -36,15 +35,12 @@ const Table = styled.table`
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
   tr {
-    border-bottom: 1px solid #ccc;
-    &:hover {
-      background-color: #f9f9f9;
-    }
+    border-bottom: 1px solid #eee;
   }
   th,
   td {
     font-size: 1.05rem;
-    padding: 0.6rem 2px;
+    padding: 0.4rem 2px;
     text-align: left;
   }
   th:last-child,
@@ -56,6 +52,7 @@ const Table = styled.table`
 type Res = { brand: string; serial: string; year: number | null };
 
 function App() {
+  const [showDebug, setShowDebug] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [brand, setBrand] = useState<string>("");
   const [serial, setSerial] = useState<string>("");
@@ -178,206 +175,195 @@ function App() {
     }, 30);
   };
 
+  const searchDisabled =
+    !(brandIsValid && serial.trim() && csvData) ||
+    !!(results ?? []).find(
+      (r) => r.serial.trim() === serial && r.brand.trim() === brand
+    );
+
   return (
     <PrimeReactProvider>
-      <Main className="flex-col">
-        <img
-          src="/assets/logo.png"
-          alt="logo"
-          style={{ width: "80%", margin: "0 auto" }}
-        />
-        <h3 className="text-center mb-0">Piano year lookup</h3>
-        <div className="flex flex-col gap-2">
-          <AutoComplete
-            onDropdownClick={onDropdownClick}
-            ref={autoRef}
-            itemTemplate={itemTemplate}
-            forceSelection
-            key={Object.keys(csvData).length}
-            scrollHeight="450px"
-            id="ac"
-            placeholder="Brand"
-            value={brand}
-            dropdown
-            onChange={(e) => {
-              setBrand(e.value);
-              setShowResults(false);
-            }}
-            completeMethod={(e) => {
-              const filtered = brands.filter((b) =>
-                b.toLowerCase().includes(e.query.toLowerCase())
-              );
-              setFilteredBrands(filtered);
-            }}
-            suggestions={filteredBrands}
+      <Main>
+        <div
+          className="flex-col flex gap-[20px] pt-8"
+          style={{ background: "#fff" }}
+        >
+          <img
+            src="/assets/logo.png"
+            alt="logo"
+            style={{ width: "75%", margin: "0 auto" }}
           />
-          <div className="p-inputgroup flex-1">
-            <InputText
-              ref={ref}
-              placeholder="Serial number"
-              type={"text"}
+          <h3 className="mb-0 text-center mt-9">Piano year lookup</h3>
+          <div className="flex flex-col gap-2">
+            <AutoComplete
+              onDropdownClick={onDropdownClick}
+              ref={autoRef}
+              itemTemplate={itemTemplate}
+              forceSelection
+              key={Object.keys(csvData).length}
+              scrollHeight="450px"
+              id="ac"
+              placeholder="Brand"
+              value={brand}
+              dropdown
               onChange={(e) => {
-                setSerial(e.target.value);
+                setBrand(e.value);
                 setShowResults(false);
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") setResult();
+              completeMethod={(e) => {
+                const filtered = brands.filter((b) =>
+                  b.toLowerCase().includes(e.query.toLowerCase())
+                );
+                setFilteredBrands(filtered);
               }}
+              suggestions={filteredBrands}
             />
-          </div>
-          {/* <Button label="Search" /> */}
-          <div className="card flex justify-content-center">
-            {/* TODO: Throw this into it's own comp - simplify logic */}
-            {/* {!showMatches && (!brandIsValid || !serial.trim()) && (
-              <Message
-                severity="secondary"
-                className="w-full"
-                text={
-                  !brandIsValid && !serial.trim()
-                    ? "Set brand and serial number"
-                    : !brandIsValid
-                    ? "Set brand"
-                    : "Set serial number"
-                }
+            <div className="p-inputgroup flex-1">
+              <InputText
+                ref={ref}
+                placeholder="Serial number"
+                type={"text"}
+                onChange={(e) => {
+                  setSerial(e.target.value);
+                  setShowResults(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") setResult();
+                }}
               />
-            )}
-            {!showMatches && brandIsValid && serial.trim() && (
+            </div>
+            {
               <Button
-                className="w-full px-0 flex align-center justify-center"
-                style={{ textAlign: "center" }}
-                onClick={() => setResult()}
+                className="justify-center"
+                severity={!searchDisabled ? undefined : "secondary"}
+                onClick={setResult}
+                // text={searchDisabled}
+                outlined={searchDisabled}
+                disabled={searchDisabled}
               >
                 Search
               </Button>
-            )}
-            {showMatches &&
-              results[results.length - 1] &&
-              !results[results.length - 1].year && (
-                <Message
-                  severity="error"
-                  className="w-full"
-                  text={`No matches for serial: ${serial}`}
-                />
-              )}
-            {showMatches &&
-              results[results.length - 1] &&
-              results[results.length - 1].year && (
-                <Message
-                  severity="success"
-                  className="w-full"
-                  text={`Year found: ${results[results.length - 1].year}`}
-                />
-              )} */}
+            }
           </div>
-          {/* TODO: Old results -- allow to delete too */}
-          {/* <select
-            onChange={(e) => {
-              setBrand(e.target.value);
-            }}
-          >
-            {brands.map((brand) => (
-              <option key={brand} value={brand}>
-                {brand}
-              </option>
-            ))}
-          </select> */}
         </div>
-        {results.length > 0 && (
-          <div className="flex gap-4 flex-col">
-            <h3 className="mb-0">Results</h3>
-            <DataTable
-              value={results
-                .reduce((a: Res[], c: Res) => {
-                  if (
-                    a.find((r) => r.brand === c.brand && r.serial === c.serial)
-                  )
-                    return a;
-                  return [...a, c];
-                }, [])
-                .map((res) => {
-                  return {
-                    brand: res.brand,
-                    serial: res.serial,
-                    year: (
-                      <span className="flex items-center justify-end">
-                        {res.year || "N/A"}
-                        <IconButton
-                          onClick={() => {
-                            setResults(
-                              results.filter(
-                                (r) =>
-                                  r.serial !== res.serial ||
-                                  r.brand !== res.brand
-                              )
-                            );
-                          }}
-                        >
-                          <X style={{ color: "#ccc" }} />
-                        </IconButton>
-                      </span>
-                    ),
-                  };
-                })}
-              className="w-full"
-              size="small"
-            >
-              <Column field="brand" header="Brand" />
-              <Column field="serial" header="Serial" />
-              <Column field="year" header="Year" align={"center"} />
-            </DataTable>
-          </div>
-        )}
-        <div>
-          {brandIsValid && (
-            <Table>
-              <thead>
-                <tr>
-                  <th>Year</th>
-                  <th>Serial Range</th>
-                </tr>
-              </thead>
-              <tbody>
-                {csvData[brand].map((data, i: number) => {
-                  const next = csvData[brand][i + 1];
-                  const range = next ? Number(next.license) - 1 : "";
-
-                  // @ts-expect-error -  checking if a number
-                  const isNumber = !isNaN(data.license);
-                  // @ts-expect-error -  checking if a number
-                  const nextIsNumber = next && !isNaN(next?.license);
-                  const foundError =
-                    !isNumber ||
-                    (nextIsNumber
-                      ? Number(next?.license) < Number(data.license)
-                      : false) ||
-                    (next ? next.year === data.year : false);
-                  const answerInRange =
-                    showMatches &&
-                    results[results.length - 1]?.year === data.year;
-                  let background = "transparent";
-                  let color = "black";
-
-                  if (answerInRange) {
-                    background = "var(--highlight-bg)";
-                    color = "var(--highlight-text-color)";
-                  }
-                  if (foundError) {
-                    background = "red";
-                    color = "white";
-                  }
-                  return (
-                    <tr key={i} style={{ background, color }}>
-                      <td>{data.year}</td>
-                      <td>
-                        {data.license}
-                        {/* {range ? <>{`-${range}`}</> : "+"} */}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </Table>
+        <div style={{ zIndex: -1 }}>
+          {results.length > 0 && (
+            <div className="flex gap-4 mt-7 flex-col">
+              <DataTable
+                value={results
+                  .reduce((a: Res[], c: Res) => {
+                    if (
+                      a.find(
+                        (r) => r.brand === c.brand && r.serial === c.serial
+                      )
+                    )
+                      return a;
+                    return [...a, c];
+                  }, [])
+                  .reverse()
+                  .map((res) => {
+                    return {
+                      brand: res.brand,
+                      serial: res.serial,
+                      year: (
+                        <span className="flex items-center justify-end">
+                          {res.year || "N/A"}
+                          <IconButton
+                            onClick={() => {
+                              setResults(
+                                results.filter(
+                                  (r) =>
+                                    r.serial !== res.serial ||
+                                    r.brand !== res.brand
+                                )
+                              );
+                            }}
+                          >
+                            <X style={{ color: "#ccc" }} />
+                          </IconButton>
+                        </span>
+                      ),
+                    };
+                  })}
+                className="w-full"
+                size="small"
+                stripedRows
+                showHeaders={false}
+                header="Results"
+              >
+                <Column field="brand" header="Brand" />
+                <Column field="serial" header="Serial" />
+                <Column field="year" header="Year" align={"center"} />
+              </DataTable>
+            </div>
           )}
+          {brand && (
+            <Button
+              onClick={() => setShowDebug(!showDebug)}
+              text
+              severity="secondary"
+              className="block !text-center justify-center mt-8 mb-3 w-full"
+            >
+              {showDebug ? "Hide" : "Show"} serial data for {brand}
+            </Button>
+          )}
+          <div className="mt-6">
+            {brandIsValid && showDebug && (
+              <Table>
+                <thead>
+                  <tr className="!border-none">
+                    <th colSpan={2} className="!text-left !pb-0 !mb-0">
+                      {brand}
+                    </th>
+                  </tr>
+                  <tr>
+                    <th>Year</th>
+                    <th>Serial No.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {csvData[brand].map((data, i: number) => {
+                    const next = csvData[brand][i + 1];
+                    // const range = next ? Number(next.license) - 1 : "";
+
+                    // @ts-expect-error -  checking if a number
+                    const isNumber = !isNaN(data.license);
+                    // @ts-expect-error -  checking if a number
+                    const nextIsNumber = next && !isNaN(next?.license);
+                    const foundError =
+                      !isNumber ||
+                      (nextIsNumber
+                        ? Number(next?.license) < Number(data.license)
+                        : false) ||
+                      (next ? next.year === data.year : false);
+                    const answerInRange =
+                      showMatches &&
+                      results[results.length - 1]?.year === data.year;
+                    let background = "transparent";
+                    let color = "black";
+
+                    if (answerInRange) {
+                      background = "var(--highlight-bg)";
+                      color = "var(--highlight-text-color)";
+                    }
+                    if (foundError) {
+                      background = "red";
+                      color = "white";
+                    }
+                    return (
+                      <tr key={i} style={{ background, color }}>
+                        <td>{data.year}</td>
+                        <td>
+                          {data.license}
+                          {/* {range ? <>{`-${range}`}</> : "+"} */}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            )}
+          </div>
         </div>
       </Main>
     </PrimeReactProvider>
